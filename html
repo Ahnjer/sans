@@ -1,0 +1,278 @@
+import React, { useState, useEffect } from 'react';
+import { Droplet, TestTube, Plus, AlertCircle, CheckCircle, Users, Shuffle } from 'lucide-react';
+
+export default function AntibodyTestSimulator() {
+  const [selectedSample, setSelectedSample] = useState(null);
+  const [testResults, setTestResults] = useState({});
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [experimentalStatus, setExperimentalStatus] = useState(null);
+
+  // 실험 시작 시 실험군의 감염 여부를 랜덤으로 설정
+  useEffect(() => {
+    randomizeExperimental();
+  }, []);
+
+  const randomizeExperimental = () => {
+    // 랜덤으로 A가 감염이거나 B가 감염
+    const isAInfected = Math.random() < 0.5;
+    setExperimentalStatus({
+      A: { infected: isAInfected, antibodies: isAInfected },
+      B: { infected: !isAInfected, antibodies: !isAInfected }
+    });
+    setSelectedSample(null);
+    setTestResults({});
+    setShowExplanation(false);
+  };
+
+  const samples = [
+    { 
+      id: 'A', 
+      name: '사람 A', 
+      group: 'experimental', 
+      hidden: true,
+      status: experimentalStatus ? (experimentalStatus.A.infected ? 'infected' : 'uninfected') : null,
+      antibodies: experimentalStatus ? experimentalStatus.A.antibodies : null,
+      description: '실험군'
+    },
+    { 
+      id: 'B', 
+      name: '사람 B', 
+      group: 'experimental', 
+      hidden: true,
+      status: experimentalStatus ? (experimentalStatus.B.infected ? 'infected' : 'uninfected') : null,
+      antibodies: experimentalStatus ? experimentalStatus.B.antibodies : null,
+      description: '실험군'
+    },
+    { 
+      id: 'C', 
+      name: '사람 C', 
+      group: 'control', 
+      hidden: false,
+      status: 'infected', 
+      antibodies: true, 
+      description: '감염됨 (양성 대조군)' 
+    },
+    { 
+      id: 'D', 
+      name: '사람 D', 
+      group: 'control', 
+      hidden: false,
+      status: 'uninfected', 
+      antibodies: false, 
+      description: '무감염 (음성 대조군)' 
+    }
+  ];
+
+  const testSerums = [
+    { id: 'test', name: '항체 검사 시약', contains: '검출용 항원' }
+  ];
+
+  const runTest = (sampleId) => {
+    const sample = samples.find(s => s.id === sampleId);
+    const result = sample.antibodies;
+
+    setTestResults(prev => ({
+      ...prev,
+      [sampleId]: result
+    }));
+  };
+
+  const resetTest = () => {
+    randomizeExperimental();
+  };
+
+  const getReactionIcon = (sampleId) => {
+    if (testResults[sampleId] === undefined) return null;
+    return testResults[sampleId] ? (
+      <div className="text-red-600 font-bold animate-pulse text-xl">양성 반응 +</div>
+    ) : (
+      <div className="text-blue-600 font-bold text-xl">음성 반응 -</div>
+    );
+  };
+
+  const experimentalSamples = samples.filter(s => s.group === 'experimental');
+  const controlSamples = samples.filter(s => s.group === 'control');
+
+  const allExperimentalTested = experimentalSamples.every(s => testResults[s.id] !== undefined);
+
+  if (!experimentalStatus) {
+    return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <TestTube className="w-8 h-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-800">항체 검사 시뮬레이션</h1>
+            </div>
+            <button
+              onClick={resetTest}
+              className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              <Shuffle className="w-4 h-4" />
+              새로운 실험
+            </button>
+          </div>
+          
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
+            <p className="text-gray-700">
+              <strong>실험 목표:</strong> 실험군(사람 A, B)의 감염 여부를 항체 검사로 확인하세요. 
+              대조군(사람 C, D)과 비교하여 결과를 분석해보세요.
+            </p>
+          </div>
+
+          {/* 실험군 선택 */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-500" />
+              실험군 (Experimental Group) - 감염 여부 미확인
+            </h2>
+            <div className="grid grid-cols-2 gap-6">
+              {experimentalSamples.map(sample => (
+                <div key={sample.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <Droplet className="w-10 h-10 text-blue-500 mb-2" />
+                      <div className="font-bold text-lg">{sample.name}</div>
+                      <div className="text-sm text-gray-600 mt-1">{sample.description}</div>
+                    </div>
+                    <div className="text-4xl">❓</div>
+                  </div>
+                  
+                  {testResults[sample.id] === undefined ? (
+                    <button
+                      onClick={() => runTest(sample.id)}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <TestTube className="w-4 h-4" />
+                      항체 검사 실시
+                    </button>
+                  ) : (
+                    <div className="mt-2 p-4 bg-white rounded-lg border-2 border-gray-300">
+                      <p className="text-sm text-gray-600 mb-2">검사 결과:</p>
+                      {getReactionIcon(sample.id)}
+                      {allExperimentalTested && (
+                        <div className={`mt-3 p-3 rounded-lg text-sm ${
+                          sample.antibodies ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          실제 상태: {sample.antibodies ? '감염됨 🦠' : '무감염 ✓'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 대조군 선택 */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-500" />
+              대조군 (Control Group) - 감염 여부 확인됨
+            </h2>
+            <div className="grid grid-cols-2 gap-6">
+              {controlSamples.map(sample => (
+                <div key={sample.id} className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <Droplet className="w-10 h-10 text-purple-500 mb-2" />
+                      <div className="font-bold text-lg">{sample.name}</div>
+                      <div className={`text-sm mt-2 px-3 py-1 rounded-full inline-block ${
+                        sample.status === 'infected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {sample.description}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {testResults[sample.id] === undefined ? (
+                    <button
+                      onClick={() => runTest(sample.id)}
+                      className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <TestTube className="w-4 h-4" />
+                      항체 검사 실시
+                    </button>
+                  ) : (
+                    <div className="mt-2 p-4 bg-white rounded-lg border-2 border-gray-300">
+                      <p className="text-sm text-gray-600 mb-2">검사 결과:</p>
+                      {getReactionIcon(sample.id)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 모든 실험군 검사 완료 시 설명 */}
+          {allExperimentalTested && (
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border-2 border-green-300 mb-6">
+              <h3 className="font-bold text-xl mb-4 flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                실험 결과 분석
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="bg-white p-5 rounded-lg shadow">
+                  <p className="font-bold text-lg mb-3 text-gray-800">🔬 실험군 결과</p>
+                  <div className="space-y-2 text-gray-700">
+                    <p>• <strong>사람 A:</strong> {testResults['A'] ? '양성 (+)' : '음성 (-)'} → {experimentalStatus.A.infected ? '감염됨' : '무감염'}</p>
+                    <p>• <strong>사람 B:</strong> {testResults['B'] ? '양성 (+)' : '음성 (-)'} → {experimentalStatus.B.infected ? '감염됨' : '무감염'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-lg shadow">
+                  <p className="font-bold text-lg mb-3 text-gray-800">✅ 대조군과의 비교</p>
+                  <div className="text-gray-700 text-sm space-y-2">
+                    <p>• <strong>양성 대조군(사람 C):</strong> 감염된 사람의 혈액으로, 항체가 존재하여 양성 반응이 나타남</p>
+                    <p>• <strong>음성 대조군(사람 D):</strong> 무감염된 사람의 혈액으로, 항체가 없어 음성 반응이 나타남</p>
+                    <p className="mt-3 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                      💡 실험군의 결과를 대조군과 비교함으로써 검사의 정확성을 확인할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-100 p-5 rounded-lg border-2 border-yellow-300">
+                  <p className="font-bold text-yellow-800 mb-2">💡 핵심 원리</p>
+                  <p className="text-sm text-gray-700">
+                    항체 검사는 면역 체계가 병원체에 반응하여 생성한 항체를 검출합니다. 
+                    감염된 사람은 체내에 항체가 형성되어 있어 양성 반응을 보이고, 
+                    감염되지 않은 사람은 항체가 없어 음성 반응을 보입니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 참고 정보 */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-blue-600" />
+            실험 설계의 중요성
+          </h3>
+          <div className="grid grid-cols-1 gap-4 text-sm">
+            <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+              <p className="font-bold mb-2">🔵 실험군 (Experimental Group)</p>
+              <p className="text-gray-700">
+                감염 여부를 알아내고자 하는 대상 그룹입니다. 
+                사람 A와 B 중 한 명은 감염되었고 한 명은 무감염 상태입니다.
+              </p>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-lg border-l-4 border-purple-400">
+              <p className="font-bold mb-2">🟣 대조군 (Control Group)</p>
+              <p className="text-gray-700">
+                비교 기준이 되는 그룹입니다. 양성 대조군(C)과 음성 대조군(D)을 통해 
+                검사가 제대로 작동하는지 확인할 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
